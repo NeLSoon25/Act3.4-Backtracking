@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, forwardRef } from 'react'
+import { useEffect, useRef, forwardRef, useImperativeHandle } from 'react'
 import { Button } from '@/components/ui/button'
 
 const COLORS = [
@@ -49,7 +49,8 @@ const GraphCanvas = forwardRef<HTMLCanvasElement, GraphCanvasProps>(
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const nodePositionsRef = useRef<Record<number, { x: number; y: number }>>({})
 
-    // Calculate node positions in a circle layout
+    useImperativeHandle(ref, () => canvasRef.current as HTMLCanvasElement)
+
     const getNodePositions = () => {
       const positions: Record<number, { x: number; y: number }> = {}
       const centerX = 300
@@ -90,10 +91,11 @@ const GraphCanvas = forwardRef<HTMLCanvasElement, GraphCanvasProps>(
       if (!canvas) return
 
       const rect = canvas.getBoundingClientRect()
-      const x = e.clientX - rect.left
-      const y = e.clientY - rect.top
+      const scaleX = canvas.width / rect.width
+      const scaleY = canvas.height / rect.height
+      const x = (e.clientX - rect.left) * scaleX
+      const y = (e.clientY - rect.top) * scaleY
 
-      // Check if click is on any node
       for (const node of graph.nodes) {
         const pos = nodePositionsRef.current[node]
         if (!pos) continue
@@ -112,10 +114,11 @@ const GraphCanvas = forwardRef<HTMLCanvasElement, GraphCanvasProps>(
       if (!canvas) return
 
       const rect = canvas.getBoundingClientRect()
-      const x = e.clientX - rect.left
-      const y = e.clientY - rect.top
+      const scaleX = canvas.width / rect.width
+      const scaleY = canvas.height / rect.height
+      const x = (e.clientX - rect.left) * scaleX
+      const y = (e.clientY - rect.top) * scaleY
 
-      // Check if right-click is on any node
       for (const node of graph.nodes) {
         const pos = nodePositionsRef.current[node]
         if (!pos) continue
@@ -127,13 +130,11 @@ const GraphCanvas = forwardRef<HTMLCanvasElement, GraphCanvasProps>(
         }
       }
 
-      // Check if right-click is on any edge
       for (const [u, v] of graph.edges) {
         const pos1 = nodePositionsRef.current[u]
         const pos2 = nodePositionsRef.current[v]
         if (!pos1 || !pos2) continue
 
-        // Check distance from point to line segment
         const distance = pointToLineDistance(x, y, pos1.x, pos1.y, pos2.x, pos2.y)
         if (distance < 10) {
           onRemoveEdge(u, v)
@@ -142,7 +143,6 @@ const GraphCanvas = forwardRef<HTMLCanvasElement, GraphCanvasProps>(
       }
     }
 
-    // Helper function to calculate distance from point to line segment
     const pointToLineDistance = (px: number, py: number, x1: number, y1: number, x2: number, y2: number): number => {
       const A = px - x1
       const B = py - y1
@@ -183,11 +183,9 @@ const GraphCanvas = forwardRef<HTMLCanvasElement, GraphCanvasProps>(
       const positions = getNodePositions()
       nodePositionsRef.current = positions
 
-      // Clear canvas
       ctx.fillStyle = '#f0f4f8'
       ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-      // Draw edges
       ctx.strokeStyle = '#cbd5e1'
       ctx.lineWidth = 2
       graph.edges.forEach(([u, v]) => {
@@ -201,7 +199,6 @@ const GraphCanvas = forwardRef<HTMLCanvasElement, GraphCanvasProps>(
         }
       })
 
-      // Draw nodes
       graph.nodes.forEach(node => {
         const pos = positions[node]
         if (!pos) return
@@ -209,14 +206,12 @@ const GraphCanvas = forwardRef<HTMLCanvasElement, GraphCanvasProps>(
         const colorIndex = getNodeColorAtStep(node)
         const nodeColor = colorIndex !== undefined ? COLORS[colorIndex % COLORS.length] : '#ffffff'
         const isSelected = selectedNode === node
-
-        // Node circle
+      
         ctx.fillStyle = nodeColor
         ctx.beginPath()
         ctx.arc(pos.x, pos.y, 25, 0, Math.PI * 2)
         ctx.fill()
 
-        // Selection highlight
         if (isSelected) {
           ctx.strokeStyle = '#FFD700'
           ctx.lineWidth = 4
@@ -226,7 +221,6 @@ const GraphCanvas = forwardRef<HTMLCanvasElement, GraphCanvasProps>(
         }
         ctx.stroke()
 
-        // Node label
         ctx.fillStyle = '#1e293b'
         ctx.font = 'bold 14px sans-serif'
         ctx.textAlign = 'center'
@@ -238,11 +232,7 @@ const GraphCanvas = forwardRef<HTMLCanvasElement, GraphCanvasProps>(
     return (
       <div className="space-y-4">
         <canvas
-          ref={(node) => {
-            canvasRef.current = node
-            if (typeof ref === 'function') ref(node)
-            else if (ref) ref.current = node
-          }}
+          ref={canvasRef}
           width={600}
           height={500}
           onClick={handleCanvasClick}
@@ -251,7 +241,7 @@ const GraphCanvas = forwardRef<HTMLCanvasElement, GraphCanvasProps>(
         />
         <div className="flex gap-2 flex-wrap">
           <Button onClick={onAddNode} variant="outline" size="sm">
-            Add Node
+            Agregar Nodo
           </Button>
         </div>
       </div>
